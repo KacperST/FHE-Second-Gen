@@ -7,7 +7,7 @@ using System.Linq;
 public class Rq
 {
     public static int N = 4; // stopień wielomianu
-    public static int q = 17;
+    public static int q = 65537;
     public static int[] modulusPoly = null; // X^N + 1
     public int[] Coeffs;
 

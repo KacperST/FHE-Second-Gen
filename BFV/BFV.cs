@@ -4,12 +4,12 @@ using System.Linq;
 
 public class BFV
 {
-    public static int t = 17;   // Modulo plaintextu
+    public static int t = 8;   // Modulo plaintextu
     public static int q = Rq.q; // Modulo ciphertextu
 
     public Rq sk;   // Secret key
     public (Rq, Rq) pk; // Public key (pk0, pk1)
-    public (Rq, Rq) rlk; // Relinearization key (rlk0, rlk1)
+    public (Rq, Rq)[] rlkTab; // Relinearization key: tablica par (rlk0[j], rlk1[j]) dla każdego bitu/cyfry (pełna relinearyzacja BFV)
 
     // Noise budget: max log2(q/t) - log2(noise)
     public int maxNoiseBudget = (int)Math.Floor(Math.Log(q / (double)t, 2));
@@ -23,7 +23,8 @@ public class BFV
 
     private int[] SampleTernary(int n)
     {
-        return Enumerable.Range(0, n).Select(_ => rand.Next(3) - 1).ToArray(); // -1, 0, 1
+        // R2: tylko 0/1
+        return Enumerable.Range(0, n).Select(_ => rand.Next(2)).ToArray();
     }
 
 
@@ -41,22 +42,24 @@ public class BFV
 
     public void KeyGen()
     {
-        sk = new Rq(SampleTernary(Rq.N)); // Sekretny klucz
+        sk = new Rq(SampleTernary(Rq.N)); 
         var a = RandomPoly();
         var e = SampleError();
-
-        var pk0 = a * sk + t * e;
-        var pk1 = -a;
+        var pk0 = -(a * sk + t * e);
+        var pk1 = a;
         pk = (pk0, pk1);
 
-        // Relinearization key generation
-        // rlk0 = a_rlk * sk + t * e_rlk + sk*sk
-        // rlk1 = -a_rlk
-        var a_rlk = RandomPoly();
-        var e_rlk = SampleError();
-        var rlk0 = a_rlk * sk + t * e_rlk + sk * sk;
-        var rlk1 = -a_rlk;
-        rlk = (rlk0, rlk1);
+        int logq = (int)Math.Ceiling(Math.Log(q, 2));
+        rlkTab = new (Rq, Rq)[logq];
+        for (int j = 0; j < logq; j++)
+        {
+            var a_rlk = RandomPoly();
+            var e_rlk = SampleError();
+            // rlk0 = a_rlk * sk + t * e_rlk + 2^j * sk * sk
+            var rlk0 = a_rlk * sk + t * e_rlk + (1 << j) * sk * sk;
+            var rlk1 = -a_rlk;
+            rlkTab[j] = (rlk0, rlk1);
+        }
     }
 
     // Ciphertext: (Rq, Rq, int noise)
@@ -68,15 +71,16 @@ public class BFV
         int delta = q / t;
         Rq mScaled = new Rq(m.Coeffs.Select(x => (x * delta) % q).ToArray());
 
-        Rq u = SampleError(); // lub ternary
+        // u z R_2 (losowe 0/1)
+        int[] uArr = Enumerable.Range(0, Rq.N).Select(_ => rand.Next(2)).ToArray();
+        Rq u = new Rq(uArr);
+        Rq e0 = SampleError();
         Rq e1 = SampleError();
-        Rq e2 = SampleError();
 
-        Rq c0 = pk0 * u + t * e1 + mScaled;
-        Rq c1 = pk1 * u + t * e2;
+        Rq c0 = pk0 * u + t * e0 + mScaled;
+        Rq c1 = pk1 * u + t * e1;
 
-        // Szacowanie szumu: noise = ||t*e1 + mScaled||
-        int noise = MaxAbsCoeff(t * e1 + mScaled);
+        int noise = MaxAbsCoeff(t * e0 + mScaled);
         return (c0, c1, noise);
     }
 
@@ -84,7 +88,7 @@ public class BFV
     {
         var (c0, c1, _) = ct;
         Rq result = c0 + (c1 * sk);
-        // Odskałowanie przez delta i zaokrąglenie
+        // Odskalowanie przez delta i zaokrąglenie
         int delta = q / t;
         int[] coeffs = result.Coeffs.Select(x => {
             int v = ((x % q) + q) % q;
@@ -105,7 +109,6 @@ public class BFV
 
     public (Rq, Rq, int) Mul((Rq, Rq, int) ct1, (Rq, Rq, int) ct2)
     {
-        // Mnożenie ciphertextów: (c0a, c1a) * (c0b, c1b) = (c0, c1, c2)
         var (c0a, c1a, noise1) = ct1;
         var (c0b, c1b, noise2) = ct2;
 
@@ -113,12 +116,23 @@ public class BFV
         Rq c1 = c0a * c1b + c1a * c0b;
         Rq c2 = c1a * c1b;
 
-        // Relinearyzacja: (c0, c1, c2) -> (c0', c1')
-        var (rlk0, rlk1) = rlk;
-        Rq c0p = c0 + rlk0 * c2;
-        Rq c1p = c1 + rlk1 * c2;
+        // Relinearyzacja: dekompozycja c2 na bity i użycie rlkTab
+        int logq = (int)Math.Ceiling(Math.Log(q, 2));
+        int[][] c2bits = BitDecomp(c2, logq); // [N][logq]
+        Rq sum0 = new Rq(new int[Rq.N]);
+        Rq sum1 = new Rq(new int[Rq.N]);
+        for (int j = 0; j < logq; j++)
+        {
+            int[] bitj = new int[Rq.N];
+            for (int i = 0; i < Rq.N; i++) bitj[i] = c2bits[i][j];
+            var bitPoly = new Rq(bitj);
+            var (rlk0, rlk1) = rlkTab[j];
+            sum0 = sum0 + (rlk0 * bitPoly);
+            sum1 = sum1 + (rlk1 * bitPoly);
+        }
+        Rq c0p = c0 + sum0;
+        Rq c1p = c1 + sum1;
 
-        // Szacowanie szumu po mnożeniu: noise rośnie ~ noise1*noise2
         int noise = noise1 * noise2;
         return (c0p, c1p, noise);
     }
@@ -126,10 +140,8 @@ public class BFV
     // Modulus switching: zmniejsz q i szum
     public (Rq, Rq, int) ModSwitch((Rq, Rq, int) ct, int newQ)
     {
-        // Redukcja współczynników ciphertextu do nowego q
         var c0 = ct.Item1 % newQ;
         var c1 = ct.Item2 % newQ;
-        // Szum maleje proporcjonalnie do nowego q
         int noise = (int)Math.Floor(ct.Item3 * (newQ / (double)q));
         return (c0, c1, noise);
     }
@@ -145,5 +157,35 @@ public class BFV
     private int MaxAbsCoeff(Rq poly)
     {
         return poly.Coeffs.Select(Math.Abs).Max();
+    }
+
+    // BitDecomp: rozkłada każdy współczynnik na bity (little-endian)
+    private int[][] BitDecomp(Rq poly, int logq)
+    {
+        int[][] bits = new int[Rq.N][];
+        for (int i = 0; i < Rq.N; i++)
+        {
+            bits[i] = new int[logq];
+            int v = poly.Coeffs[i];
+            for (int j = 0; j < logq; j++)
+            {
+                bits[i][j] = v & 1;
+                v >>= 1;
+            }
+        }
+        return bits;
+    }
+
+    // PowersOf2: zwraca [sk, 2*sk, 4*sk, ...] do logq
+    private Rq[] PowersOf2(Rq sk, int logq)
+    {
+        Rq[] res = new Rq[logq];
+        Rq pow = sk;
+        for (int i = 0; i < logq; i++)
+        {
+            res[i] = pow;
+            pow = 2 * pow;
+        }
+        return res;
     }
 }

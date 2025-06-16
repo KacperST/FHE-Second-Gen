@@ -25,8 +25,8 @@ public class Program
         Console.WriteLine($"Test 1: N = {Rq.N}, t = {BFV.t}, q = {BFV.q}");
         Console.WriteLine($"M1: {m1}");
         Console.WriteLine($"M2: {m2}");
-        Console.WriteLine($"Dec(M1 + M2): {decrypted_sum}");
-        Console.WriteLine($"Dec(M1 * M2): {decrypted_mul}");
+        Console.WriteLine($"Dec(M1 + M2): {decrypted_sum}, plaintext: {m1 + m2}");
+        Console.WriteLine($"Dec(M1 * M2): {decrypted_mul}, plaintext: {(m1 * m2) % BFV.t}");
 
         // Test 2: Dodawanie wielomianów z kilkoma współczynnikami
         var m3arr = new int[Rq.N];
@@ -45,25 +45,9 @@ public class Program
         Console.WriteLine("\nTest 2: Wielomiany");
         Console.WriteLine($"M3: {m3}");
         Console.WriteLine($"M4: {m4}");
-        Console.WriteLine($"Dec(M3 + M4): {dec3_add_4}");
-        Console.WriteLine($"Dec(M3 * M4): {dec3_mul_4}");
+        Console.WriteLine($"Dec(M3 + M4): {dec3_add_4}, plaintext: {m3 + m4} ");
+        Console.WriteLine($"Dec(M3 * M4): {dec3_mul_4}, plaintext: {(m3 * m4) % BFV.t}");
 
-        // Test 3: Homomorficzne sumowanie 5x tej samej wiadomości
-        var m5arr = new int[Rq.N];
-        m5arr[0] = 1;
-        var m5 = new Rq(m5arr);
-        var ct5 = bfv.Encrypt(m5);
-        var ct_sum5 = ct5;
-        for (int i = 0; i < 4; i++) ct_sum5 = bfv.Add(ct_sum5, ct5);
-        var dec_sum5 = bfv.Decrypt(ct_sum5);
-        Console.WriteLine("\nTest 3: Homomorficzne sumowanie 5x tej samej wiadomości");
-        Console.WriteLine($"Dec(5 * M5): {dec_sum5}");
 
-        // Test 4: Homomorficzne mnożenie 3x tej samej wiadomości
-        var ct_mul3 = ct5;
-        for (int i = 0; i < 2; i++) ct_mul3 = bfv.Mul(ct_mul3, ct5);
-        var dec_mul3 = bfv.Decrypt(ct_mul3);
-        Console.WriteLine("\nTest 4: Homomorficzne mnożenie 3x tej samej wiadomości");
-        Console.WriteLine($"Dec(M5^3): {dec_mul3}");
     }
 }
