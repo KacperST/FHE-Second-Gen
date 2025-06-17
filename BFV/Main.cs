@@ -1,69 +1,92 @@
+using System;
+
 public class Program
 {
-    public static void Main()
+    public static void Main(string[] args)
     {
-        // Ustaw N=6 przed jakąkolwiek operacją na Rq/BFV
-        Rq.SetN(6);
         var bfv = new BFV();
 
-        // Test 1: Dodawanie i mnożenie prostych wiadomości
-        var m1arr = new int[Rq.N];
-        var m2arr = new int[Rq.N];
-        m1arr[0] = 1; // wiadomość = 1
-        m2arr[0] = 2; // wiadomość = 2
-        var m1 = new Rq(m1arr);
-        var m2 = new Rq(m2arr);
+        // Wiadomość do zaszyfrowania
+        int[] message1 = new int[BFV.N];
+        int[] message2 = new int[BFV.N];
 
-        var ct1 = bfv.Encrypt(m1);
-        var ct2 = bfv.Encrypt(m2);
+        // Zapełnij wiadomości przykładowymi danymi
+        for (int i = 0; i < BFV.N; i++)
+        {
+            message1[i] = i % BFV.T;          // np. [0,1,2,...,T-1,0,1,...]
+            message2[i] = (2 * i) % BFV.T;
+        }
 
-        var ct_sum = bfv.Add(ct1, ct2);
-        var ct_mul = bfv.Mul(ct1, ct2);
-        var decrypted_sum = bfv.Decrypt(ct_sum);
-        var decrypted_mul = bfv.Decrypt(ct_mul);
+        // Szyfrowanie
+        var ct1 = bfv.Encrypt(message1);
+        var ct2 = bfv.Encrypt(message2);
 
-        Console.WriteLine($"Test 1: N = {Rq.N}, t = {BFV.t}, q = {BFV.q}");
-        Console.WriteLine($"M1: {m1}");
-        Console.WriteLine($"M2: {m2}");
-        Console.WriteLine($"Dec(M1 + M2): {decrypted_sum}");
-        Console.WriteLine($"Dec(M1 * M2): {decrypted_mul}");
+        // Deszyfrowanie oryginałów
+        var dec1 = bfv.Decrypt(ct1);
+        var dec2 = bfv.Decrypt(ct2);
 
-        // Test 2: Dodawanie wielomianów z kilkoma współczynnikami
-        var m3arr = new int[Rq.N];
-        var m4arr = new int[Rq.N];
-        m3arr[0] = 3; m3arr[2] = 4; m3arr[5] = 1;
-        m4arr[1] = 2; m4arr[2] = 1; m4arr[4] = 5;
-        var m3 = new Rq(m3arr);
-        var m4 = new Rq(m4arr);
-        var ct3 = bfv.Encrypt(m3);
-        var ct4 = bfv.Encrypt(m4);
-        var ct3_add_4 = bfv.Add(ct3, ct4);
-        var ct3_mul_4 = bfv.Mul(ct3, ct4);
-        var dec3_add_4 = bfv.Decrypt(ct3_add_4);
-        var dec3_mul_4 = bfv.Decrypt(ct3_mul_4);
+        Console.WriteLine("Plaintext 1: " + string.Join(", ", message1));
+        Console.WriteLine("Decrypted 1: " + string.Join(", ", dec1));
+        Console.WriteLine("Plaintext 2: " + string.Join(", ", message2));
+        Console.WriteLine("Decrypted 2: " + string.Join(", ", dec2));
 
-        Console.WriteLine("\nTest 2: Wielomiany");
-        Console.WriteLine($"M3: {m3}");
-        Console.WriteLine($"M4: {m4}");
-        Console.WriteLine($"Dec(M3 + M4): {dec3_add_4}");
-        Console.WriteLine($"Dec(M3 * M4): {dec3_mul_4}");
+        // Dodawanie szyfrogramów
+        var ctAdd = bfv.EvalAdd(ct1, ct2);
+        var decAdd = bfv.Decrypt(ctAdd);
+        Console.WriteLine("Decrypted Add: " + string.Join(", ", decAdd));
 
-        // Test 3: Homomorficzne sumowanie 5x tej samej wiadomości
-        var m5arr = new int[Rq.N];
-        m5arr[0] = 1;
-        var m5 = new Rq(m5arr);
-        var ct5 = bfv.Encrypt(m5);
-        var ct_sum5 = ct5;
-        for (int i = 0; i < 4; i++) ct_sum5 = bfv.Add(ct_sum5, ct5);
-        var dec_sum5 = bfv.Decrypt(ct_sum5);
-        Console.WriteLine("\nTest 3: Homomorficzne sumowanie 5x tej samej wiadomości");
-        Console.WriteLine($"Dec(5 * M5): {dec_sum5}");
+        // Mnożenie szyfrogramów (z relinearizacją)
+        var ctMul = bfv.EvalMult(ct1, ct2);
+        var decMul = bfv.Decrypt(ctMul);
+        Console.WriteLine("Decrypted Mult: " + string.Join(", ", decMul));
 
-        // Test 4: Homomorficzne mnożenie 3x tej samej wiadomości
-        var ct_mul3 = ct5;
-        for (int i = 0; i < 2; i++) ct_mul3 = bfv.Mul(ct_mul3, ct5);
-        var dec_mul3 = bfv.Decrypt(ct_mul3);
-        Console.WriteLine("\nTest 4: Homomorficzne mnożenie 3x tej samej wiadomości");
-        Console.WriteLine($"Dec(M5^3): {dec_mul3}");
+        // Test 1: Sprawdzenie poprawności deszyfrowania
+        bool ok1 = true, ok2 = true;
+        for (int i = 0; i < BFV.N; i++)
+        {
+            if (message1[i] != dec1[i]) ok1 = false;
+            if (message2[i] != dec2[i]) ok2 = false;
+        }
+        Console.WriteLine(ok1 ? "[OK] Decrypt 1 matches input" : "[FAIL] Decrypt 1 does not match input");
+        Console.WriteLine(ok2 ? "[OK] Decrypt 2 matches input" : "[FAIL] Decrypt 2 does not match input");
+
+        // Test 2: Dodawanie - sprawdź poprawność
+        bool okAdd = true;
+        for (int i = 0; i < BFV.N; i++)
+        {
+            int expected = (message1[i] + message2[i]) % BFV.T;
+            if (decAdd[i] != expected) okAdd = false;
+        }
+        Console.WriteLine(okAdd ? "[OK] Decrypt Add matches input sum" : "[FAIL] Decrypt Add does not match input sum");
+
+        // Test 3: Mnożenie - sprawdź poprawność
+        bool okMul = true;
+        for (int i = 0; i < BFV.N; i++)
+        {
+            int expected = (message1[i] * message2[i]) % BFV.T;
+            if (decMul[i] != expected) okMul = false;
+        }
+        Console.WriteLine(okMul ? "[OK] Decrypt Mult matches input product" : "[FAIL] Decrypt Mult does not match input product");
+
+        // Test 4: Graniczne przypadki (same zera, same T-1)
+        int[] zeros = new int[BFV.N];
+        int[] maxs = new int[BFV.N];
+        for (int i = 0; i < BFV.N; i++) maxs[i] = BFV.T - 1;
+        var ctZeros = bfv.Encrypt(zeros);
+        var ctMaxs = bfv.Encrypt(maxs);
+        var decZeros = bfv.Decrypt(ctZeros);
+        var decMaxs = bfv.Decrypt(ctMaxs);
+        Console.WriteLine("Zeros decrypted:   " + string.Join(", ", decZeros));
+        Console.WriteLine("Maxs decrypted:    " + string.Join(", ", decMaxs));
+
+        // Test 5: Losowe wiadomości
+        var rand = new Random();
+        int[] randomMsg = new int[BFV.N];
+        for (int i = 0; i < BFV.N; i++) randomMsg[i] = rand.Next(BFV.T);
+        var ctRand = bfv.Encrypt(randomMsg);
+        var decRand = bfv.Decrypt(ctRand);
+        bool okRand = true;
+        for (int i = 0; i < BFV.N; i++) if (randomMsg[i] != decRand[i]) okRand = false;
+        Console.WriteLine(okRand ? "[OK] Decrypt random matches input" : "[FAIL] Decrypt random does not match input");
     }
 }

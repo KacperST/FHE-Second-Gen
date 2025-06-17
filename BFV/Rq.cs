@@ -1,107 +1,110 @@
-﻿    // Operator %: redukcja współczynników wielomianu do dowolnego mod
-    
-using System;
-using System.Linq;
-
+﻿using System;
 
 public class Rq
 {
-    public static int N = 4; // stopień wielomianu
-    public static int q = 17;
-    public static int[] modulusPoly = null; // X^N + 1
-    public int[] Coeffs;
+    public static int Q = 257; // Modulo
+    public static int N = 6;   // Stopień pierścienia R_q = Z_q[X]/(X^N + 1)
 
-    // Ustawia nową wartość N i resetuje modulusPoly
-    public static void SetN(int newN)
-    {
-        N = newN;
-        modulusPoly = null;
-    }
+    public int[] coeffs;
 
     public Rq(int[] coeffs)
     {
-        // Inicjalizacja modulusPoly jeśli nie została ustawiona lub niezgodna z N
-        if (modulusPoly == null || modulusPoly.Length != N + 1)
-        {
-            modulusPoly = new int[N + 1];
-            modulusPoly[0] = 1;
-            modulusPoly[N] = 1;
-            for (int i = 1; i < N; i++) modulusPoly[i] = 0;
-        }
-        this.Coeffs = ReducePoly(coeffs);
+        this.coeffs = ReducePoly(coeffs);
     }
 
-
-    public override string ToString()
-    {
-        return "[" + string.Join(", ", Coeffs) + "]";
-    }
-
+    /// <summary>
+    /// Redukuje wielomian modulo (X^N + 1), tzn. X^N ≡ -1 (mod X^N + 1)
+    /// </summary>
     private int[] ReducePoly(int[] poly)
     {
-        // Zredukuj wielomian modulo X^N + 1
-        int n = N;
-        int[] result = new int[n];
+        int[] result = new int[N];
 
-        for (int i = 0; i < poly.Length; i++)
+        // Skopiuj współczynniki do stopnia N-1 wprost
+        int minLen = Math.Min(N, poly.Length);
+        for (int i = 0; i < minLen; i++)
         {
-            int coeff = poly[i] % q;
-            if (coeff < 0) coeff += q;
+            result[i] = ModQ(poly[i]);
+        }
 
-            if (i < n)
-            {
-                result[i] = (result[i] + coeff) % q;
-            }
-            else
-            {
-                // X^k = -X^{k-n} mod X^n + 1
-                int deg = i % n;
-                result[deg] = (result[deg] - coeff + q) % q;
-            }
+        // Redukcja wyższych stopni: X^k ≡ -X^{k−N} (mod X^N + 1)
+        for (int i = N; i < poly.Length; i++)
+        {
+            int targetIndex = i - N;
+            result[targetIndex] = ModQ(result[targetIndex] - poly[i]);
         }
 
         return result;
     }
 
+    public static int ModQ(int value)
+    {
+        int mod = value % Q;
+        return mod < 0 ? mod + Q : mod;
+    }
+
     public static Rq operator +(Rq a, Rq b)
     {
-        return new Rq(a.Coeffs.Zip(b.Coeffs, (x, y) => (x + y) % q).ToArray());
+        int[] result = new int[N];
+        for (int i = 0; i < N; i++)
+        {
+            result[i] = ModQ(a.coeffs[i] + b.coeffs[i]);
+        }
+        return new Rq(result);
+    }
+
+    public static Rq operator -(Rq a)
+    {
+        int[] result = new int[N];
+        for (int i = 0; i < N; i++)
+        {
+            result[i] = ModQ(-a.coeffs[i]);
+        }
+        return new Rq(result);
     }
 
     public static Rq operator -(Rq a, Rq b)
     {
-        return new Rq(a.Coeffs.Zip(b.Coeffs, (x, y) => (x - y + q) % q).ToArray());
+        return a + (-b);
     }
 
     public static Rq operator *(Rq a, Rq b)
     {
-        int deg = a.Coeffs.Length + b.Coeffs.Length - 1;
-        int[] result = new int[deg];
-
-        for (int i = 0; i < a.Coeffs.Length; i++)
+        int[] result = new int[2 * N - 1];
+        for (int i = 0; i < N; i++)
         {
-            for (int j = 0; j < b.Coeffs.Length; j++)
+            for (int j = 0; j < N; j++)
             {
-                result[i + j] += a.Coeffs[i] * b.Coeffs[j];
+                result[i + j] += a.coeffs[i] * b.coeffs[j];
             }
         }
-
         return new Rq(result);
     }
 
     public static Rq operator *(int scalar, Rq a)
     {
-        return new Rq(a.Coeffs.Select(x => (scalar * x) % q).ToArray());
+        int[] result = new int[N];
+        for (int i = 0; i < N; i++)
+        {
+            result[i] = ModQ(scalar * a.coeffs[i]);
+        }
+        return new Rq(result);
     }
 
-    // Operator %: redukcja współczynników wielomianu do dowolnego mod
-    public static Rq operator %(Rq a, int mod)
+    /// <summary>
+    /// Zwraca wielomian X^degree
+    /// </summary>
+    public static Rq Monomial(int degree)
     {
-        return new Rq(a.Coeffs.Select(x => ((x % mod) + mod) % mod).ToArray());
+        int[] coeffs = new int[degree + 1];
+        coeffs[degree] = 1;
+        return new Rq(coeffs);
     }
-    
-    public static Rq operator -(Rq a)
+
+    /// <summary>
+    /// Zwraca reprezentację tekstową wielomianu
+    /// </summary>
+    public override string ToString()
     {
-        return new Rq(a.Coeffs.Select(x => (-x + q) % q).ToArray());
+        return string.Join(" + ", coeffs.Select((c, i) => $"{c}*X^{i}"));
     }
 }
