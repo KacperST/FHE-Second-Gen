@@ -69,25 +69,17 @@ public class Helper
 
         return D;
     }
+    
     public static List<BigInteger> RefPolMulv2(List<BigInteger> A, List<BigInteger> B)
     {
         int n = A.Count;
-        BigInteger[] C = new BigInteger[2 * n];
-        List<BigInteger> D = new List<BigInteger>(n);
-
+        var C = new BigInteger[2 * n];
+        var D = new List<BigInteger>(new BigInteger[n]);
         for (int i = 0; i < n; i++)
-        {
             for (int j = 0; j < n; j++)
-            {
                 C[i + j] += A[i] * B[j];
-            }
-        }
-
         for (int i = 0; i < n; i++)
-        {
-            D.Add(C[i] - C[i + n]);
-        }
-
+            D[i] = C[i] - C[i + n];
         return D;
     }
     public static bool IsRootOfUnity(BigInteger w, int m, BigInteger q)

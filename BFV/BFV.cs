@@ -385,19 +385,20 @@ public class BFV
         for (int i = 0; i < n; i++)
         {
             // c0 = r0
-            BigInteger val0 = (t * r0[i]) / q;
-            val0 = ((BigInteger)Math.Round((double)val0) % q + q) % q;
-            c0.Add(val0);
+            BigInteger val0 = t * r0[i] / q;
+            var diff = val0 / q;
+            BigInteger val0r = (val0 % q + q) % q;
+            c0.Add(val0r);
 
             // c1 = r1 + r2
-            BigInteger val1 = (t * (r1[i] + r2[i])) / q;
-            val1 = ((BigInteger)Math.Round((double)val1) % q + q) % q;
-            c1.Add(val1);
+            BigInteger val1 = t * (r1[i] + r2[i]) / q;
+            BigInteger val1r = (val1 % q + q) % q;
+            c1.Add(val1r);
 
             // c2 = r3
-            BigInteger val2 = (t * r3[i]) / q;
-            val2 = ((BigInteger)Math.Round((double)val2) % q + q) % q;
-            c2.Add(val2);
+            BigInteger val2 = t * r3[i] / q;
+            BigInteger val2r = (val2 % q + q) % q;
+            c2.Add(val2r);
         }
 
         Poly r0_poly = new Poly(n, q, qnp) { F = c0 }.Mod(q);

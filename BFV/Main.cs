@@ -35,7 +35,7 @@ class Program
         HomomorphicMultiplicationRelinV1Demo(Evaluator, ct1, ct2, n1, n2);
 
         // 9. Homomorphic multiplication (relinearization v2)
-        HomomorphicMultiplicationRelinV2Demo(Evaluator, ct1, ct2, n1, n2);
+        // HomomorphicMultiplicationRelinV2Demo(Evaluator, ct1, ct2, n1, n2);
     }
 
     static (int n, BigInteger q, BigInteger t, BigInteger psi, BigInteger psiv, BigInteger w, BigInteger wv, List<BigInteger[]> qnp, double mu, double sigma, int T, BigInteger p) SetupParameters()
@@ -231,6 +231,9 @@ class Program
         else
             Console.WriteLine("* Homomorphic multiplication does not work.");
         Console.WriteLine();
+        Console.WriteLine($"* Actual: {nr_mul_v1}");
+        Console.WriteLine($"* Expected: {ne_mul_v1}");
+        Console.WriteLine($"* Difference: {nr_mul_v1 - ne_mul_v1}");
     }
 
     static void HomomorphicMultiplicationRelinV2Demo(BFV Evaluator, List<Poly> ct1, List<Poly> ct2, int n1, int n2)

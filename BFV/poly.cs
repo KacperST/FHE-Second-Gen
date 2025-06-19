@@ -193,12 +193,12 @@ public class Poly
     {
         Poly b = new Poly(this.N, this.Q, this.NTTParams);
         for (int i = 0; i < this.N; i++)
-            b.F[i] = new System.Numerics.BigInteger(Math.Round((double)this.F[i]));
+            b.F[i] = new BigInteger(Math.Round((double)this.F[i]));
         b.InNTT = this.InNTT;
         return b;
     }
     
-    public override bool Equals(object obj)
+    public override bool Equals(object? obj)
     {
         if (obj == null || GetType() != obj.GetType())
             return false;
