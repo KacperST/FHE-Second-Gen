@@ -77,7 +77,7 @@ public static class NTT
         BigInteger n_inv = Helper.ModInv(n, q);
         for (int i = 0; i < n; i++)
         {
-            B[i] = (B[i] * n_inv) % q;
+            B[i] = B[i] * n_inv % q;
             if (B[i] < 0) B[i] += q;
         }
 

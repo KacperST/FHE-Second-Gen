@@ -14,18 +14,29 @@ public class Poly
         N = n;
         Q = q;
         NTTParams = np;
-        F = new List<BigInteger>(new BigInteger[n]);
+        F = [.. new BigInteger[n]];
         InNTT = false;
     }
 
-    public void Randomize(int B, bool domain = false, int type = 0, double mu = 0, double sigma = 0)
+    public void Randomize(BigInteger B, bool domain = false, int type = 0, double mu = 0, double sigma = 0)
     {
         if (type == 0)
         {
             var rnd = new Random();
             for (int i = 0; i < N; i++)
             {
-                int val = rnd.Next(-B / 2, B / 2);
+                // Generate a random integer in the range [-B/2, B/2)
+                BigInteger min = -B / 2;
+                BigInteger max = B / 2;
+                // Generate a random BigInteger in [min, max)
+                byte[] bytes = B.ToByteArray();
+                BigInteger val;
+                do
+                {
+                    rnd.NextBytes(bytes);
+                    val = new BigInteger(bytes);
+                } while (val < min || val >= max);
+
                 F[i] = ((val % Q) + Q) % Q;
             }
             InNTT = domain;
@@ -40,7 +51,8 @@ public class Poly
                 double u2 = 1.0 - rng.NextDouble();
                 double randStdNormal = Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Sin(2.0 * Math.PI * u2);
                 double val = mu + sigma * randStdNormal;
-                F[i] = ((BigInteger)((int)Math.Round(val)) % Q + Q) % Q;
+                BigInteger bigVal = new BigInteger((int)Math.Round(val));
+                F[i] = ((bigVal % Q) + Q) % Q;
             }
             InNTT = domain;
         }
@@ -156,7 +168,18 @@ public class Poly
 
         return c;
     }
-
+    
+    public static Poly operator -(Poly a)
+    {
+        Poly c = new Poly(a.N, a.Q, a.NTTParams);
+        for (int i = 0; i < a.N; i++)
+        {
+            c.F[i] = (-a.F[i]) % a.Q;
+            if (c.F[i] < 0) c.F[i] += a.Q;
+        }
+        c.InNTT = a.InNTT;
+        return c;
+    }
 
 
 

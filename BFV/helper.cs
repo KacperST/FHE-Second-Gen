@@ -69,11 +69,11 @@ public class Helper
 
         return D;
     }
-    public static BigInteger[] RefPolMulv2(BigInteger[] A, BigInteger[] B)
+    public static List<BigInteger> RefPolMulv2(List<BigInteger> A, List<BigInteger> B)
     {
-        int n = A.Length;
+        int n = A.Count;
         BigInteger[] C = new BigInteger[2 * n];
-        BigInteger[] D = new BigInteger[n];
+        List<BigInteger> D = new List<BigInteger>(n);
 
         for (int i = 0; i < n; i++)
         {
@@ -85,7 +85,7 @@ public class Helper
 
         for (int i = 0; i < n; i++)
         {
-            D[i] = C[i] - C[i + n];
+            D.Add(C[i] - C[i + n]);
         }
 
         return D;
