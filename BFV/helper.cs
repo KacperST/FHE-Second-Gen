@@ -42,7 +42,7 @@ public class Helper
         T[] b = new T[n];
         for (int i = 0; i < n; i++)
         {
-            int revIdx = Helper.IntReverse(i, r);
+            int revIdx = IntReverse(i, r);
             b[revIdx] = a[i];
         }
         return b;
@@ -127,7 +127,7 @@ public class Helper
 
         while (attemptCtr < attemptMax)
         {
-            BigInteger a = rng.Next(2, (int)(q - 1));
+            BigInteger a = RandomBigInteger(2, q - 1);
             BigInteger b = BigInteger.ModPow(a, g, q);
 
             if (IsRootOfUnity(b, m, q))
@@ -157,7 +157,20 @@ public class Helper
 
         return (q, psi, psiv, w, wv);
     }
-
+    public static BigInteger RandomBigInteger(BigInteger min, BigInteger max)
+    {
+        if (min >= max) throw new ArgumentException("min must be less than max");
+        var rng = new Random();
+        byte[] bytes = max.ToByteArray();
+        BigInteger result;
+        do
+        {
+            rng.NextBytes(bytes);
+            bytes[^1] &= 0x7F; // zeruj bit znaku
+            result = new BigInteger(bytes);
+        } while (result < min || result >= max);
+        return result;
+    }
 
 
 }

@@ -91,7 +91,7 @@ public class Poly
         c.InNTT = a.InNTT;
         return c;
     }
-    
+
     public static Poly operator -(Poly a, Poly b)
     {
         if (a.InNTT != b.InNTT)
@@ -108,7 +108,7 @@ public class Poly
         c.InNTT = a.InNTT;
         return c;
     }
-    
+
     public static Poly operator *(Poly a, Poly b)
     {
         if (a.InNTT != b.InNTT)
@@ -168,7 +168,7 @@ public class Poly
 
         return c;
     }
-    
+
     public static Poly operator -(Poly a)
     {
         Poly c = new Poly(a.N, a.Q, a.NTTParams);
@@ -181,6 +181,46 @@ public class Poly
         return c;
     }
 
+    public Poly Mod(BigInteger @base)
+    {
+        Poly b = new Poly(this.N, this.Q, this.NTTParams);
+        for (int i = 0; i < this.N; i++)
+            b.F[i] = this.F[i] % @base;
+        b.InNTT = this.InNTT;
+        return b;
+    }
+    public Poly Round()
+    {
+        Poly b = new Poly(this.N, this.Q, this.NTTParams);
+        for (int i = 0; i < this.N; i++)
+            b.F[i] = new System.Numerics.BigInteger(Math.Round((double)this.F[i]));
+        b.InNTT = this.InNTT;
+        return b;
+    }
+    
+    public override bool Equals(object obj)
+    {
+        if (obj == null || GetType() != obj.GetType())
+            return false;
 
-
+        Poly b = (Poly)obj;
+        if (this.N != b.N)
+            return false;
+        if (this.Q != b.Q)
+            return false;
+        for (int i = 0; i < this.N; i++)
+        {
+            if (this.F[i] != b.F[i])
+                return false;
+        }
+        return true;
+    }
+    
+    public override int GetHashCode()
+    {
+        int hash = N.GetHashCode() ^ Q.GetHashCode();
+        foreach (var x in F)
+            hash ^= x.GetHashCode();
+        return hash;
+    }
 }

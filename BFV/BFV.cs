@@ -53,7 +53,7 @@ public class BFV
         // sk <- R_2
         var s = new Poly(n, q, qnp);
         s.Randomize(2); // Randomize over {0,1}
-        this.sk = s;
+        sk = s;
     }
     public void PublicKeyGen()
     {
@@ -93,7 +93,7 @@ public class BFV
             var Ts2 = new Poly(n, q, qnp);
             for (int j = 0; j < n; j++)
             {
-                Ts2.F[j] = (BigInteger.Pow(T, i) * sk2.F[j]) % q;
+                Ts2.F[j] = BigInteger.Pow(T, i) * sk2.F[j] % q;
             }
 
             var rlki0 = Ts2 - (ai * sk + ei);
@@ -194,13 +194,14 @@ public class BFV
         for (int i = 0; i < n; i++)
         {
             // (t * x) / q, rounded to nearest integer
-            m.F[i] = BigInteger.Divide((t * m.F[i] + q / 2), q); // rounding
+            m.F[i] = BigInteger.Divide(t * m.F[i] + q / 2, q); // rounding
             m.F[i] = ((m.F[i] % t) + t) % t; // mod t, always positive
         }
 
         Poly mr = new Poly(n, t, qnp);
         for (int i = 0; i < n; i++)
             mr.F[i] = m.F[i];
+        mr = mr.Mod(t);
         mr.InNTT = m.InNTT;
 
         return mr;
@@ -228,6 +229,7 @@ public class BFV
         Poly mr = new Poly(n, t, qnp);
         for (int i = 0; i < n; i++)
             mr.F[i] = m.F[i];
+        mr = mr.Mod(t);
         mr.InNTT = m.InNTT;
 
         return mr;
@@ -398,9 +400,9 @@ public class BFV
             c2.Add(val2);
         }
 
-        Poly r0_poly = new Poly(n, q, qnp) { F = c0 };
-        Poly r1_poly = new Poly(n, q, qnp) { F = c1 };
-        Poly r2_poly = new Poly(n, q, qnp) { F = c2 };
+        Poly r0_poly = new Poly(n, q, qnp) { F = c0 }.Mod(q);
+        Poly r1_poly = new Poly(n, q, qnp) { F = c1 }.Mod(q);
+        Poly r2_poly = new Poly(n, q, qnp) { F = c2 }.Mod(q);
 
         return new List<Poly> { r0_poly, r1_poly, r2_poly };
     }
