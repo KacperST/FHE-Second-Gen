@@ -122,8 +122,8 @@ public class Poly
             var psiTable = a.NTTParams[2];
             var psivTable = a.NTTParams[3];
 
-            int[] s_p = new int[a.N];
-            int[] b_p = new int[a.N];
+            BigInteger[] s_p = new BigInteger[a.N];
+            BigInteger[] b_p = new BigInteger[a.N];
 
             for (int i = 0; i < a.N; i++)
             {
@@ -136,14 +136,14 @@ public class Poly
             var s_n = NTT.Transform(s_p, wTable, a.Q);
             var b_n = NTT.Transform(b_p, wTable, a.Q);
 
-            int[] sb_n = new int[a.N];
+            BigInteger[] sb_n = new BigInteger[a.N];
             for (int i = 0; i < a.N; i++)
             {
                 sb_n[i] = (s_n[i] * b_n[i]) % a.Q;
                 if (sb_n[i] < 0) sb_n[i] += a.Q;
             }
 
-            var sb_p = NTT.InverseTransform(sb_n, wvTable, a.Q);
+            var sb_p = NTT.INTT(sb_n, wvTable, a.Q);
 
             for (int i = 0; i < a.N; i++)
             {
