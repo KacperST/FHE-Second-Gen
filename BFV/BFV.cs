@@ -378,23 +378,17 @@ public class BFV
         var c1 = r1.Zip(r2, (x, y) => x + y).ToList();
         var c2 = new List<BigInteger>(r3);
 
+        // Redukcja modulo q, ale NIE skalowanie przez t/q!
         for (int i = 0; i < n; i++)
         {
-            c0[i] = BigInteger.Divide(t * c0[i], q);
-            c1[i] = BigInteger.Divide(t * c1[i], q);
-            c2[i] = BigInteger.Divide(t * c2[i], q);
+            c0[i] = ((c0[i] % q) + q) % q;
+            c1[i] = ((c1[i] % q) + q) % q;
+            c2[i] = ((c2[i] % q) + q) % q;
         }
 
-        for (int i = 0; i < n; i++)
-        {
-            c0[i] = ((c0[i] + q) % q;
-            c1[i] = ((c1[i]  + q) % q;
-            c2[i] = ((c2[i] + q) % q;
-        }
-
-        Poly r0_poly = new Poly(n, q, qnp) { F = c0 }.Mod(q);
-        Poly r1_poly = new Poly(n, q, qnp) { F = c1 }.Mod(q);
-        Poly r2_poly = new Poly(n, q, qnp) { F = c2 }.Mod(q);
+        Poly r0_poly = new Poly(n, q, qnp) { F = c0 };
+        Poly r1_poly = new Poly(n, q, qnp) { F = c1 };
+        Poly r2_poly = new Poly(n, q, qnp) { F = c2 };
 
         return new List<Poly> { r0_poly, r1_poly, r2_poly };
     }

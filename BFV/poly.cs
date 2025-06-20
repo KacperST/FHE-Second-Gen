@@ -50,17 +50,17 @@ public class Poly
     public override string ToString()
     {
         string pstr = F[0].ToString();
-        int tmp = Math.Min(N, 8);
+        int tmp = Math.Min(N, 12);
 
         for (int i = 1; i < tmp; i++)
         {
             pstr += $" + {F[i]}*x^{i}";
+            if(F[i] != 0)
+            {
+                Console.WriteLine($"Coefficient at x^{i} is non-zero: {F[i]}"    );
+            }
         }
 
-        if (N > 8)
-        {
-            pstr += " + ...";
-        }
 
         return pstr;
     }
@@ -197,6 +197,8 @@ public class Poly
         if (this.N != b.N)
             return false;
         if (this.Q != b.Q)
+            return false;
+        if(this.InNTT != b.InNTT)
             return false;
         for (int i = 0; i < this.N; i++)
         {

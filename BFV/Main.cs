@@ -23,13 +23,13 @@ class Program
         EncodeAndEncrypt(Evaluator, n1, n2, out m1, out m2, out ct1, out ct2);
 
         // 5. Homomorphic addition
-        HomomorphicAdditionDemo(Evaluator, ct1, ct2, n1, n2);
+        // HomomorphicAdditionDemo(Evaluator, ct1, ct2, n1, n2);
 
         // 6. Homomorphic subtraction
         HomomorphicSubtractionDemo(Evaluator, ct1, ct2, n1, n2);
 
         // 7. Homomorphic multiplication (no relinearization)
-        HomomorphicMultiplicationDemo(Evaluator, ct1, ct2, n1, n2);
+        // HomomorphicMultiplicationDemo(Evaluator, ct1, ct2, n1, n2);
 
         // 8. Homomorphic multiplication (relinearization v1)
         HomomorphicMultiplicationRelinV1Demo(Evaluator, ct1, ct2, n1, n2);
