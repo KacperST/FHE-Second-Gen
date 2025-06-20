@@ -387,9 +387,9 @@ public class BFV
 
         for (int i = 0; i < n; i++)
         {
-            c0[i] = ((c0[i] % q) + q) % q;
-            c1[i] = ((c1[i] % q) + q) % q;
-            c2[i] = ((c2[i] % q) + q) % q;
+            c0[i] = ((c0[i] + q) % q;
+            c1[i] = ((c1[i]  + q) % q;
+            c2[i] = ((c2[i] + q) % q;
         }
 
         Poly r0_poly = new Poly(n, q, qnp) { F = c0 }.Mod(q);
