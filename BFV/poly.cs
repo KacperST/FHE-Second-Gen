@@ -22,21 +22,12 @@ public class Poly
     {
         if (type == 0)
         {
-            var rnd = new Random();
+            BigInteger min = -B / 2;
+            BigInteger max = B / 2;
             for (int i = 0; i < N; i++)
             {
-                // Generate a random integer in the range [-B/2, B/2)
-                BigInteger min = -B / 2;
-                BigInteger max = B / 2;
-                // Generate a random BigInteger in [min, max)
-                byte[] bytes = B.ToByteArray();
-                BigInteger val;
-                do
-                {
-                    rnd.NextBytes(bytes);
-                    val = new BigInteger(bytes);
-                } while (val < min || val >= max);
-
+                // Generate a random integer in the inclusive range [min, max]
+                BigInteger val = Helper.RandomBigInteger(min, max + 1);
                 F[i] = ((val % Q) + Q) % Q;
             }
             InNTT = domain;
@@ -46,12 +37,11 @@ public class Poly
             var rng = new Random();
             for (int i = 0; i < N; i++)
             {
-                // Box-Muller transform
                 double u1 = 1.0 - rng.NextDouble();
                 double u2 = 1.0 - rng.NextDouble();
                 double randStdNormal = Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Sin(2.0 * Math.PI * u2);
                 double val = mu + sigma * randStdNormal;
-                BigInteger bigVal = new BigInteger((int)Math.Round(val));
+                BigInteger bigVal = new BigInteger((int)val);
                 F[i] = ((bigVal % Q) + Q) % Q;
             }
             InNTT = domain;

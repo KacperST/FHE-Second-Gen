@@ -188,52 +188,52 @@ class Program
 
     static void HomomorphicMultiplicationDemo(BFV Evaluator, List<Poly> ct1, List<Poly> ct2, int n1, int n2)
     {
-        var ct_mul = Evaluator.HomomorphicMultiplication(ct1, ct2);
-        var mt_mul = Evaluator.DecryptionV2(ct_mul);
+        var ct = Evaluator.HomomorphicMultiplication(ct1, ct2);
+        var mt = Evaluator.DecryptionV2(ct);
 
-        BigInteger nr_mul = Evaluator.IntDecode(mt_mul);
-        BigInteger ne_mul = n1 * n2;
+        BigInteger nr = Evaluator.IntDecode(mt);
+        BigInteger ne = (BigInteger)n1 * n2;
 
         Console.WriteLine("--- Performing ct_mul = Enc(m1) * Enc(m2) (no relinearization)");
-        Console.WriteLine($"* ct_mul[0] :{ct_mul[0]}");
-        Console.WriteLine($"* ct_mul[1] :{ct_mul[1]}");
+        Console.WriteLine($"* ct_mul[0] :{ct[0]}");
+        Console.WriteLine($"* ct_mul[1] :{ct[1]}");
         Console.WriteLine("--- Performing ct_dec = Dec(ct_sub)");
-        Console.WriteLine($"* ct_dec    :{mt_mul}");
+        Console.WriteLine($"* ct_dec    :{mt}");
         Console.WriteLine("--- Performing ct_dcd = Decode(ct_dec)");
-        Console.WriteLine($"* ct_dcd    :{nr_mul}");
+        Console.WriteLine($"* ct_dcd    :{nr}");
 
-        if (nr_mul == ne_mul)
+        if (nr == ne)
             Console.WriteLine("* Homomorphic multiplication works.");
         else
             Console.WriteLine("* Homomorphic multiplication does not work.");
+        Console.WriteLine($"* Actual: {nr}");
+        Console.WriteLine($"* Expected: {ne}");
+        Console.WriteLine($"* Difference: {nr - ne}");
         Console.WriteLine();
     }
 
     static void HomomorphicMultiplicationRelinV1Demo(BFV Evaluator, List<Poly> ct1, List<Poly> ct2, int n1, int n2)
     {
-        var ct_mul_v1 = Evaluator.HomomorphicMultiplication(ct1, ct2);
-        ct_mul_v1 = Evaluator.RelinearizationV1(ct_mul_v1);
-        var mt_mul_v1 = Evaluator.Decryption(ct_mul_v1);
+        var ct_ = Evaluator.HomomorphicMultiplication(ct1, ct2);
+        var ct = Evaluator.RelinearizationV1(ct_);
+        var mt = Evaluator.Decryption(ct);
 
-        BigInteger nr_mul_v1 = Evaluator.IntDecode(mt_mul_v1);
-        BigInteger ne_mul_v1 = n1 * n2;
+        BigInteger nr = Evaluator.IntDecode(mt);
+        BigInteger ne = (BigInteger)n1 * n2;
 
         Console.WriteLine("--- Performing ct_mul = Enc(m1) * Enc(m2) (with relinearization v1)");
-        Console.WriteLine($"* ct_mul[0] :{ct_mul_v1[0]}");
-        Console.WriteLine($"* ct_mul[1] :{ct_mul_v1[1]}");
+        Console.WriteLine($"* ct_mul[0] :{ct[0]}");
+        Console.WriteLine($"* ct_mul[1] :{ct[1]}");
         Console.WriteLine("--- Performing ct_dec = Dec(ct_sub)");
-        Console.WriteLine($"* ct_dec    :{mt_mul_v1}");
+        Console.WriteLine($"* ct_dec    :{mt}");
         Console.WriteLine("--- Performing ct_dcd = Decode(ct_dec)");
-        Console.WriteLine($"* ct_dcd    :{nr_mul_v1}");
+        Console.WriteLine($"* ct_dcd    :{nr}");
 
-        if (nr_mul_v1 == ne_mul_v1)
+        if (nr == ne)
             Console.WriteLine("* Homomorphic multiplication works.");
         else
             Console.WriteLine("* Homomorphic multiplication does not work.");
         Console.WriteLine();
-        Console.WriteLine($"* Actual: {nr_mul_v1}");
-        Console.WriteLine($"* Expected: {ne_mul_v1}");
-        Console.WriteLine($"* Difference: {nr_mul_v1 - ne_mul_v1}");
     }
 
     static void HomomorphicMultiplicationRelinV2Demo(BFV Evaluator, List<Poly> ct1, List<Poly> ct2, int n1, int n2)

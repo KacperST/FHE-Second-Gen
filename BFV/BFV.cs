@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 
 public class BFV
@@ -105,18 +106,11 @@ public class BFV
         this.rlk1 = rlk1;
     }
 
+
     public void EvalKeyGenV2(BigInteger p)
     {
-        /*
-        a <- R_{p*q}
-        e <- X'
-        rlk[0] = [-(a*sk+e)+p*s^2]_{p*q}
-        rlk[1] =  a
-        */
         this.p = p;
-
         var rlk2 = new List<Poly>();
-
         BigInteger pq = p * q;
 
         var a = new Poly(n, pq, qnp);
@@ -125,20 +119,24 @@ public class BFV
         a.Randomize(pq);
         e.Randomize(0, domain: false, type: 1, mu: mu, sigma: sigma);
 
-        // c0 = a*sk + e
+        // c0 = a*sk + e (bez modulo)
         var c0 = Helper.RefPolMulv2(a.F, sk.F);
         for (int i = 0; i < n; i++)
-            c0[i] = (c0[i] + e.F[i]) % pq;
+            c0[i] = c0[i] + e.F[i];
 
-        // c1 = p * (sk*sk)
+        // c1 = p * (sk*sk) (bez modulo)
         var sk2 = Helper.RefPolMulv2(sk.F, sk.F);
         for (int i = 0; i < n; i++)
-            sk2[i] = (p * sk2[i]) % pq;
+            sk2[i] = p * sk2[i];
 
         // c2 = (c1 - c0) mod pq
-        var c2 = new List<BigInteger>(n);
+        var c2 = new List<BigInteger>();
         for (int i = 0; i < n; i++)
-            c2.Add((sk2[i] - c0[i] + pq) % pq);
+        {
+            BigInteger val = sk2[i] - c0[i];
+            // Poprawna obsługa modulo dla BigInteger
+            c2.Add((val % pq + pq) % pq);
+        }
 
         var c = new Poly(n, pq, qnp);
         c.F = c2;
@@ -221,17 +219,14 @@ public class BFV
         // Scale and round each coefficient
         for (int i = 0; i < n; i++)
         {
-            // (t * x) / q, rounded to nearest integer
-            m.F[i] = BigInteger.Divide((t * m.F[i] + q / 2), q); // rounding
-            m.F[i] = ((m.F[i] % t) + t) % t; // mod t, always positive
+            m.F[i] = BigInteger.Divide(t * m.F[i], q); // rounding
         }
-
+        m = m.Round();
+        m = m.Mod(t);
         Poly mr = new Poly(n, t, qnp);
         for (int i = 0; i < n; i++)
             mr.F[i] = m.F[i];
-        mr = mr.Mod(t);
         mr.InNTT = m.InNTT;
-
         return mr;
     }
 
@@ -366,6 +361,7 @@ public class BFV
         return new List<Poly> { ct0_b, ct1_b };
     }
     
+    
     public List<Poly> HomomorphicMultiplication(List<Poly> ct0, List<Poly> ct1)
     {
         Poly ct00 = ct0[0];
@@ -378,27 +374,22 @@ public class BFV
         var r2 = Helper.RefPolMulv2(ct01.F, ct10.F);
         var r3 = Helper.RefPolMulv2(ct01.F, ct11.F);
 
-        var c0 = new List<BigInteger>(n);
-        var c1 = new List<BigInteger>(n);
-        var c2 = new List<BigInteger>(n);
+        var c0 = new List<BigInteger>(r0);
+        var c1 = r1.Zip(r2, (x, y) => x + y).ToList();
+        var c2 = new List<BigInteger>(r3);
 
         for (int i = 0; i < n; i++)
         {
-            // c0 = r0
-            BigInteger val0 = t * r0[i] / q;
-            var diff = val0 / q;
-            BigInteger val0r = (val0 % q + q) % q;
-            c0.Add(val0r);
+            c0[i] = BigInteger.Divide(t * c0[i], q);
+            c1[i] = BigInteger.Divide(t * c1[i], q);
+            c2[i] = BigInteger.Divide(t * c2[i], q);
+        }
 
-            // c1 = r1 + r2
-            BigInteger val1 = t * (r1[i] + r2[i]) / q;
-            BigInteger val1r = (val1 % q + q) % q;
-            c1.Add(val1r);
-
-            // c2 = r3
-            BigInteger val2 = t * r3[i] / q;
-            BigInteger val2r = (val2 % q + q) % q;
-            c2.Add(val2r);
+        for (int i = 0; i < n; i++)
+        {
+            c0[i] = ((c0[i] % q) + q) % q;
+            c1[i] = ((c1[i] % q) + q) % q;
+            c2[i] = ((c2[i] % q) + q) % q;
         }
 
         Poly r0_poly = new Poly(n, q, qnp) { F = c0 }.Mod(q);
@@ -409,4 +400,3 @@ public class BFV
     }
 }
 
-    
