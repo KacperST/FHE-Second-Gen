@@ -4,38 +4,29 @@ using System.Collections.Generic;
 
 class Program
 {
-    static void Main(string[] args)
+    static void Maain(string[] args)
     {
-        // 1. Parameter setup
         var (n, q, t, psi, psiv, w, wv, qnp, mu, sigma, T, p) = SetupParameters();
 
-        // 2. Evaluator and key generation
         var Evaluator = new BFV(n, q, t, mu, sigma, qnp);
         GenerateKeys(Evaluator, T, p);
 
-        // 3. Random message generation
         int n1, n2;
         GenerateRandomMessages(out n1, out n2);
 
-        // 4. Encode and encrypt
         Poly m1, m2;
         List<Poly> ct1, ct2;
         EncodeAndEncrypt(Evaluator, n1, n2, out m1, out m2, out ct1, out ct2);
 
-        // 5. Homomorphic addition
-        // HomomorphicAdditionDemo(Evaluator, ct1, ct2, n1, n2);
+        HomomorphicAdditionDemo(Evaluator, ct1, ct2, n1, n2);
 
-        // 6. Homomorphic subtraction
         HomomorphicSubtractionDemo(Evaluator, ct1, ct2, n1, n2);
 
-        // 7. Homomorphic multiplication (no relinearization)
-        // HomomorphicMultiplicationDemo(Evaluator, ct1, ct2, n1, n2);
+        HomomorphicMultiplicationDemo(Evaluator, ct1, ct2, n1, n2);
 
-        // 8. Homomorphic multiplication (relinearization v1)
         HomomorphicMultiplicationRelinV1Demo(Evaluator, ct1, ct2, n1, n2);
 
-        // 9. Homomorphic multiplication (relinearization v2)
-        // HomomorphicMultiplicationRelinV2Demo(Evaluator, ct1, ct2, n1, n2);
+        HomomorphicMultiplicationRelinV2Demo(Evaluator, ct1, ct2, n1, n2);
     }
 
     static (int n, BigInteger q, BigInteger t, BigInteger psi, BigInteger psiv, BigInteger w, BigInteger wv, List<BigInteger[]> qnp, double mu, double sigma, int T, BigInteger p) SetupParameters()

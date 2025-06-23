@@ -24,7 +24,6 @@ public class BFV
     public List<List<Poly>> rlk1 = new List<List<Poly>>();
     public List<Poly> rlk2 = new List<Poly>();
 
-    // Constructor
     public BFV(int n, BigInteger q, BigInteger t, double mu, double sigma, List<BigInteger[]> qnp)
     {
         this.n = n;
@@ -51,9 +50,8 @@ public class BFV
     }
     public void SecretKeyGen()
     {
-        // sk <- R_2
         var s = new Poly(n, q, qnp);
-        s.Randomize(2); // Randomize over {0,1}
+        s.Randomize(2);
         sk = s;
     }
     public void PublicKeyGen()
@@ -66,8 +64,8 @@ public class BFV
         var a = new Poly(n, q, qnp);
         var e = new Poly(n, q, qnp);
 
-        a.Randomize(q); // Uniform random in R_q
-        e.Randomize(0, domain: false, type: 1, mu: mu, sigma: sigma); // Gaussian noise
+        a.Randomize(q); 
+        e.Randomize(0, domain: false, type: 1, mu: mu, sigma: sigma); 
 
         var pk0 = -(a * sk + e);
         var pk1 = a;
@@ -119,22 +117,18 @@ public class BFV
         a.Randomize(pq);
         e.Randomize(0, domain: false, type: 1, mu: mu, sigma: sigma);
 
-        // c0 = a*sk + e (bez modulo)
         var c0 = Helper.RefPolMulv2(a.F, sk.F);
         for (int i = 0; i < n; i++)
             c0[i] = c0[i] + e.F[i];
 
-        // c1 = p * (sk*sk) (bez modulo)
         var sk2 = Helper.RefPolMulv2(sk.F, sk.F);
         for (int i = 0; i < n; i++)
             sk2[i] = p * sk2[i];
 
-        // c2 = (c1 - c0) mod pq
         var c2 = new List<BigInteger>();
         for (int i = 0; i < n; i++)
         {
             BigInteger val = sk2[i] - c0[i];
-            // Poprawna obsługa modulo dla BigInteger
             c2.Add((val % pq + pq) % pq);
         }
 
@@ -188,12 +182,10 @@ public class BFV
         // c1 * sk + c0
         Poly m = ct[1] * sk + ct[0];
 
-        // Scale and round each coefficient
         for (int i = 0; i < n; i++)
         {
-            // (t * x) / q, rounded to nearest integer
-            m.F[i] = BigInteger.Divide(t * m.F[i] + q / 2, q); // rounding
-            m.F[i] = ((m.F[i] % t) + t) % t; // mod t, always positive
+            m.F[i] = BigInteger.Divide(t * m.F[i] + q / 2, q); 
+            m.F[i] = ((m.F[i] % t) + t) % t;
         }
 
         Poly mr = new Poly(n, t, qnp);
@@ -216,10 +208,9 @@ public class BFV
 
         Poly m = ct[0] + (ct[1] * sk) + (ct[2] * sk2);
 
-        // Scale and round each coefficient
         for (int i = 0; i < n; i++)
         {
-            m.F[i] = BigInteger.Divide(t * m.F[i], q); // rounding
+            m.F[i] = BigInteger.Divide(t * m.F[i], q);
         }
         m = m.Round();
         m = m.Mod(t);
@@ -236,7 +227,6 @@ public class BFV
         Poly c1 = ct[1];
         Poly c2 = ct[2];
 
-        // Divide c2 into base T
         var c2i = new List<Poly>();
 
         Poly c2q = new Poly(n, q, qnp);
@@ -282,20 +272,18 @@ public class BFV
         Poly c1 = ct[1];
         Poly c2 = ct[2];
 
-        // Multiply and scale c2 with rlk2[0]
         var c2_0 = Helper.RefPolMulv2(c2.F, rlk2[0].F);
         for (int i = 0; i < n; i++)
         {
-            c2_0[i] = BigInteger.Divide(c2_0[i] + p / 2, p); // rounding
-            c2_0[i] = ((c2_0[i] % q) + q) % q; // mod q, always positive
+            c2_0[i] = BigInteger.Divide(c2_0[i] + p / 2, p); 
+            c2_0[i] = ((c2_0[i] % q) + q) % q; 
         }
 
-        // Multiply and scale c2 with rlk2[1]
         var c2_1 = Helper.RefPolMulv2(c2.F, rlk2[1].F);
         for (int i = 0; i < n; i++)
         {
-            c2_1[i] = BigInteger.Divide(c2_1[i] + p / 2, p); // rounding
-            c2_1[i] = ((c2_1[i] % q) + q) % q; // mod q, always positive
+            c2_1[i] = BigInteger.Divide(c2_1[i] + p / 2, p); 
+            c2_1[i] = ((c2_1[i] % q) + q) % q; 
         }
 
         Poly c0e = new Poly(n, q, qnp); c0e.F = c2_0;
@@ -378,7 +366,13 @@ public class BFV
         var c1 = r1.Zip(r2, (x, y) => x + y).ToList();
         var c2 = new List<BigInteger>(r3);
 
-        // Redukcja modulo q, ale NIE skalowanie przez t/q!
+        for (int i = 0; i < n; i++)
+        {
+            c0[i] = c0[i] * T / q;
+            c1[i] = c1[i] * T / q;
+            c2[i] = c2[i] * T / q;
+        }
+
         for (int i = 0; i < n; i++)
         {
             c0[i] = ((c0[i] % q) + q) % q;

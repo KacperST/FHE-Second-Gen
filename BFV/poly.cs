@@ -26,7 +26,6 @@ public class Poly
             BigInteger max = B / 2;
             for (int i = 0; i < N; i++)
             {
-                // Generate a random integer in the inclusive range [min, max]
                 BigInteger val = Helper.RandomBigInteger(min, max + 1);
                 F[i] = ((val % Q) + Q) % Q;
             }
