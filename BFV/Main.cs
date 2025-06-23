@@ -1,69 +1,257 @@
-public class Program
+using System;
+using System.Numerics;
+using System.Collections.Generic;
+
+class Program
 {
-    public static void Main()
+    static void Maain(string[] args)
     {
-        // Ustaw N=6 przed jakąkolwiek operacją na Rq/BFV
-        Rq.SetN(6);
-        var bfv = new BFV();
+        var (n, q, t, psi, psiv, w, wv, qnp, mu, sigma, T, p) = SetupParameters();
 
-        // Test 1: Dodawanie i mnożenie prostych wiadomości
-        var m1arr = new int[Rq.N];
-        var m2arr = new int[Rq.N];
-        m1arr[0] = 1; // wiadomość = 1
-        m2arr[0] = 2; // wiadomość = 2
-        var m1 = new Rq(m1arr);
-        var m2 = new Rq(m2arr);
+        var Evaluator = new BFV(n, q, t, mu, sigma, qnp);
+        GenerateKeys(Evaluator, T, p);
 
-        var ct1 = bfv.Encrypt(m1);
-        var ct2 = bfv.Encrypt(m2);
+        int n1, n2;
+        GenerateRandomMessages(out n1, out n2);
 
-        var ct_sum = bfv.Add(ct1, ct2);
-        var ct_mul = bfv.Mul(ct1, ct2);
-        var decrypted_sum = bfv.Decrypt(ct_sum);
-        var decrypted_mul = bfv.Decrypt(ct_mul);
+        Poly m1, m2;
+        List<Poly> ct1, ct2;
+        EncodeAndEncrypt(Evaluator, n1, n2, out m1, out m2, out ct1, out ct2);
 
-        Console.WriteLine($"Test 1: N = {Rq.N}, t = {BFV.t}, q = {BFV.q}");
-        Console.WriteLine($"M1: {m1}");
-        Console.WriteLine($"M2: {m2}");
-        Console.WriteLine($"Dec(M1 + M2): {decrypted_sum}");
-        Console.WriteLine($"Dec(M1 * M2): {decrypted_mul}");
+        HomomorphicAdditionDemo(Evaluator, ct1, ct2, n1, n2);
 
-        // Test 2: Dodawanie wielomianów z kilkoma współczynnikami
-        var m3arr = new int[Rq.N];
-        var m4arr = new int[Rq.N];
-        m3arr[0] = 3; m3arr[2] = 4; m3arr[5] = 1;
-        m4arr[1] = 2; m4arr[2] = 1; m4arr[4] = 5;
-        var m3 = new Rq(m3arr);
-        var m4 = new Rq(m4arr);
-        var ct3 = bfv.Encrypt(m3);
-        var ct4 = bfv.Encrypt(m4);
-        var ct3_add_4 = bfv.Add(ct3, ct4);
-        var ct3_mul_4 = bfv.Mul(ct3, ct4);
-        var dec3_add_4 = bfv.Decrypt(ct3_add_4);
-        var dec3_mul_4 = bfv.Decrypt(ct3_mul_4);
+        HomomorphicSubtractionDemo(Evaluator, ct1, ct2, n1, n2);
 
-        Console.WriteLine("\nTest 2: Wielomiany");
-        Console.WriteLine($"M3: {m3}");
-        Console.WriteLine($"M4: {m4}");
-        Console.WriteLine($"Dec(M3 + M4): {dec3_add_4}");
-        Console.WriteLine($"Dec(M3 * M4): {dec3_mul_4}");
+        HomomorphicMultiplicationDemo(Evaluator, ct1, ct2, n1, n2);
 
-        // Test 3: Homomorficzne sumowanie 5x tej samej wiadomości
-        var m5arr = new int[Rq.N];
-        m5arr[0] = 1;
-        var m5 = new Rq(m5arr);
-        var ct5 = bfv.Encrypt(m5);
-        var ct_sum5 = ct5;
-        for (int i = 0; i < 4; i++) ct_sum5 = bfv.Add(ct_sum5, ct5);
-        var dec_sum5 = bfv.Decrypt(ct_sum5);
-        Console.WriteLine("\nTest 3: Homomorficzne sumowanie 5x tej samej wiadomości");
-        Console.WriteLine($"Dec(5 * M5): {dec_sum5}");
+        HomomorphicMultiplicationRelinV1Demo(Evaluator, ct1, ct2, n1, n2);
 
-        // Test 4: Homomorficzne mnożenie 3x tej samej wiadomości
-        var ct_mul3 = ct5;
-        for (int i = 0; i < 2; i++) ct_mul3 = bfv.Mul(ct_mul3, ct5);
-        var dec_mul3 = bfv.Decrypt(ct_mul3);
-        Console.WriteLine("\nTest 4: Homomorficzne mnożenie 3x tej samej wiadomości");
-        Console.WriteLine($"Dec(M5^3): {dec_mul3}");
+        HomomorphicMultiplicationRelinV2Demo(Evaluator, ct1, ct2, n1, n2);
+    }
+
+    static (int n, BigInteger q, BigInteger t, BigInteger psi, BigInteger psiv, BigInteger w, BigInteger wv, List<BigInteger[]> qnp, double mu, double sigma, int T, BigInteger p) SetupParameters()
+    {
+        var PD = 0;
+        BigInteger t, q, psi, psiv, w, wv;
+        int n, logq;
+
+        if (PD == 0)
+        {
+            t = 16;
+            n = 1024;
+            q = 132120577;
+            psi = 73993;
+            psiv = Helper.ModInv(psi, q);
+            w = BigInteger.ModPow(psi, 2, q);
+            wv = Helper.ModInv(w, q);
+        }
+        else
+        {
+            t = 16; n = 1024; logq = 27;
+            (q, psi, psiv, w, wv) = Helper.ParamGen(n, logq);
+        }
+
+        var mu = 0.0;
+        var sigma = 0.5 * 3.2;
+        var T = 256;
+        var p = BigInteger.Pow(q, 3) + 1;
+
+        BigInteger[] w_table = new BigInteger[n];
+        BigInteger[] wv_table = new BigInteger[n];
+        BigInteger[] psi_table = new BigInteger[n];
+        BigInteger[] psiv_table = new BigInteger[n];
+
+        w_table[0] = 1;
+        wv_table[0] = 1;
+        psi_table[0] = 1;
+        psiv_table[0] = 1;
+
+        for (int i = 1; i < n; i++)
+        {
+            w_table[i] = (w_table[i - 1] * w) % q;
+            wv_table[i] = (wv_table[i - 1] * wv) % q;
+            psi_table[i] = (psi_table[i - 1] * psi) % q;
+            psiv_table[i] = (psiv_table[i - 1] * psiv) % q;
+        }
+
+        var qnp = new List<BigInteger[]>
+        {
+            w_table,
+            wv_table,
+            psi_table,
+            psiv_table
+        };
+
+        Console.WriteLine("--- Starting BFV Demo");
+        return (n, q, t, psi, psiv, w, wv, qnp, mu, sigma, T, p);
+    }
+
+    static void GenerateKeys(BFV Evaluator, int T, BigInteger p)
+    {
+        Evaluator.SecretKeyGen();
+        Evaluator.PublicKeyGen();
+        Evaluator.EvalKeyGenV1(T);
+        Evaluator.EvalKeyGenV2(p);
+        Console.WriteLine(Evaluator);
+    }
+
+    static void GenerateRandomMessages(out int n1, out int n2)
+    {
+        Random rnd = new Random();
+        n1 = rnd.Next(-(1 << 15), (1 << 15));
+        n2 = rnd.Next(-(1 << 15), (1 << 15) - 1);
+
+        Console.WriteLine("--- Random integers n1 and n2 are generated.");
+        Console.WriteLine($"* n1: {n1}");
+        Console.WriteLine($"* n2: {n2}");
+        Console.WriteLine($"* n1+n2: {n1 + n2}");
+        Console.WriteLine($"* n1-n2: {n1 - n2}");
+        Console.WriteLine($"* n1*n2: {n1 * n2}");
+        Console.WriteLine();
+    }
+
+    static void EncodeAndEncrypt(BFV Evaluator, int n1, int n2, out Poly m1, out Poly m2, out List<Poly> ct1, out List<Poly> ct2)
+    {
+        Console.WriteLine("--- n1 and n2 are encoded as polynomials m1(x) and m2(x).");
+        m1 = Evaluator.IntEncode(n1);
+        m2 = Evaluator.IntEncode(n2);
+
+        Console.WriteLine($"* m1(x): {m1}");
+        Console.WriteLine($"* m2(x): {m2}");
+        Console.WriteLine();
+
+        ct1 = Evaluator.Encryption(m1);
+        ct2 = Evaluator.Encryption(m2);
+
+        Console.WriteLine("--- m1 and m2 are encrypted as ct1 and ct2.");
+        Console.WriteLine($"* ct1[0]: {ct1[0]}");
+        Console.WriteLine($"* ct1[1]: {ct1[1]}");
+        Console.WriteLine($"* ct2[0]: {ct2[0]}");
+        Console.WriteLine($"* ct2[1]: {ct2[1]}");
+        Console.WriteLine();
+    }
+
+    static void HomomorphicAdditionDemo(BFV Evaluator, List<Poly> ct1, List<Poly> ct2, int n1, int n2)
+    {
+        var ct = Evaluator.HomomorphicAddition(ct1, ct2);
+        var mt = Evaluator.Decryption(ct);
+
+        BigInteger nr = Evaluator.IntDecode(mt);
+        BigInteger ne = n1 + n2;
+
+        Console.WriteLine("--- Performing ct_add = Enc(m1) + Enc(m2)");
+        Console.WriteLine($"* ct_add[0] :{ct[0]}");
+        Console.WriteLine($"* ct_add[1] :{ct[1]}");
+        Console.WriteLine("--- Performing ct_dec = Dec(ct_add)");
+        Console.WriteLine($"* ct_dec    :{mt}");
+        Console.WriteLine("--- Performing ct_dcd = Decode(ct_dec)");
+        Console.WriteLine($"* ct_dcd    :{nr}");
+
+        if (nr == ne)
+            Console.WriteLine("* Homomorphic addition works.");
+        else
+            Console.WriteLine("* Homomorphic addition does not work.");
+        Console.WriteLine();
+    }
+
+    static void HomomorphicSubtractionDemo(BFV Evaluator, List<Poly> ct1, List<Poly> ct2, int n1, int n2)
+    {
+        var ct_sub = Evaluator.HomomorphicSubtraction(ct1, ct2);
+        var mt_sub = Evaluator.Decryption(ct_sub);
+
+        BigInteger nr_sub = Evaluator.IntDecode(mt_sub);
+        BigInteger ne_sub = n1 - n2;
+
+        Console.WriteLine("--- Performing ct_sub = Enc(m1) - Enc(m2)");
+        Console.WriteLine($"* ct_sub[0] :{ct_sub[0]}");
+        Console.WriteLine($"* ct_sub[1] :{ct_sub[1]}");
+        Console.WriteLine("--- Performing ct_dec = Dec(ct_sub)");
+        Console.WriteLine($"* ct_dec    :{mt_sub}");
+        Console.WriteLine("--- Performing ct_dcd = Decode(ct_dec)");
+        Console.WriteLine($"* ct_dcd    :{nr_sub}");
+
+        if (nr_sub == ne_sub)
+            Console.WriteLine("* Homomorphic subtraction works.");
+        else
+            Console.WriteLine("* Homomorphic subtraction does not work.");
+        Console.WriteLine();
+    }
+
+    static void HomomorphicMultiplicationDemo(BFV Evaluator, List<Poly> ct1, List<Poly> ct2, int n1, int n2)
+    {
+        var ct = Evaluator.HomomorphicMultiplication(ct1, ct2);
+        var mt = Evaluator.DecryptionV2(ct);
+
+        BigInteger nr = Evaluator.IntDecode(mt);
+        BigInteger ne = (BigInteger)n1 * n2;
+
+        Console.WriteLine("--- Performing ct_mul = Enc(m1) * Enc(m2) (no relinearization)");
+        Console.WriteLine($"* ct_mul[0] :{ct[0]}");
+        Console.WriteLine($"* ct_mul[1] :{ct[1]}");
+        Console.WriteLine("--- Performing ct_dec = Dec(ct_sub)");
+        Console.WriteLine($"* ct_dec    :{mt}");
+        Console.WriteLine("--- Performing ct_dcd = Decode(ct_dec)");
+        Console.WriteLine($"* ct_dcd    :{nr}");
+
+        if (nr == ne)
+            Console.WriteLine("* Homomorphic multiplication works.");
+        else
+            Console.WriteLine("* Homomorphic multiplication does not work.");
+        Console.WriteLine($"* Actual: {nr}");
+        Console.WriteLine($"* Expected: {ne}");
+        Console.WriteLine($"* Difference: {nr - ne}");
+        Console.WriteLine();
+    }
+
+    static void HomomorphicMultiplicationRelinV1Demo(BFV Evaluator, List<Poly> ct1, List<Poly> ct2, int n1, int n2)
+    {
+        var ct_ = Evaluator.HomomorphicMultiplication(ct1, ct2);
+        var ct = Evaluator.RelinearizationV1(ct_);
+        var mt = Evaluator.Decryption(ct);
+
+        BigInteger nr = Evaluator.IntDecode(mt);
+        BigInteger ne = (BigInteger)n1 * n2;
+
+        Console.WriteLine("--- Performing ct_mul = Enc(m1) * Enc(m2) (with relinearization v1)");
+        Console.WriteLine($"* ct_mul[0] :{ct[0]}");
+        Console.WriteLine($"* ct_mul[1] :{ct[1]}");
+        Console.WriteLine("--- Performing ct_dec = Dec(ct_sub)");
+        Console.WriteLine($"* ct_dec    :{mt}");
+        Console.WriteLine("--- Performing ct_dcd = Decode(ct_dec)");
+        Console.WriteLine($"* ct_dcd    :{nr}");
+
+        if (nr == ne)
+            Console.WriteLine("* Homomorphic multiplication works.");
+        else
+            Console.WriteLine("* Homomorphic multiplication does not work.");
+        Console.WriteLine();
+    }
+
+    static void HomomorphicMultiplicationRelinV2Demo(BFV Evaluator, List<Poly> ct1, List<Poly> ct2, int n1, int n2)
+    {
+        var ct_mul_v2 = Evaluator.HomomorphicMultiplication(ct1, ct2);
+        ct_mul_v2 = Evaluator.RelinearizationV2(ct_mul_v2);
+        var mt_mul_v2 = Evaluator.Decryption(ct_mul_v2);
+
+        BigInteger nr_mul_v2 = Evaluator.IntDecode(mt_mul_v2);
+        BigInteger ne_mul_v2 = n1 * n2;
+
+        Console.WriteLine("--- Performing ct_mul = Enc(m1) * Enc(m2) (with relinearization v2)");
+        Console.WriteLine($"* ct_mul[0] :{ct_mul_v2[0]}");
+        Console.WriteLine($"* ct_mul[1] :{ct_mul_v2[1]}");
+        Console.WriteLine("--- Performing ct_dec = Dec(ct_sub)");
+        Console.WriteLine($"* ct_dec    :{mt_mul_v2}");
+        Console.WriteLine("--- Performing ct_dcd = Decode(ct_dec)");
+        Console.WriteLine($"* ct_dcd    :{nr_mul_v2}");
+
+        if (nr_mul_v2 == ne_mul_v2)
+            Console.WriteLine("* Homomorphic multiplication works.");
+        else
+            Console.WriteLine("* Homomorphic multiplication does not work.");
+            Console.WriteLine($"Actual: {nr_mul_v2}");
+        Console.WriteLine($"* Expected: {ne_mul_v2}");
+        Console.WriteLine($"* Difference: {nr_mul_v2 - ne_mul_v2}");
+
+        Console.WriteLine();
     }
 }
